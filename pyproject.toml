@@ -1,0 +1,309 @@
+## Build system related stuff
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["workflowpy*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "workflowpy.version.__version__"}
+
+## Project related stuff
+[project]
+name = "workflowpy"
+dynamic = ['version']
+
+authors = [
+    {name = "B.W. Dalmijn", email = "brendan.dalmijn@deltares.nl"},
+]
+maintainers = [
+    {name = "B.W. Dalmijn", email = "brendan.dalmijn@deltares.nl"},
+]
+
+description = ""
+license = "MIT"
+readme = "README.md"
+
+requires-python = ">=3.11"
+dependencies = [
+    "click",
+    "graphviz",
+    "importlib-metadata",
+    "jinja2",
+    "pydantic>=2.9, <3",
+    "snakemake",
+    "typing_extensions",
+    "tqdm",
+]
+
+keywords = []
+classifiers = [
+# How mature is this project? Common values are
+#   3 - Alpha
+#   4 - Beta
+#   5 - Production/Stable
+'Development Status :: 4 - Beta',
+
+# Indicate who your project is intended for
+'Intended Audience :: End Users/Desktop',
+'Intended Audience :: Developers',
+'Intended Audience :: Science/Research',
+
+# Topic of the package
+'Topic :: Software Development',
+
+# Language
+'Natural Language :: English',
+
+# OS
+'Operating System :: OS Independent',
+
+# Specify the Python versions you support here. In particular, ensure
+# that you indicate whether you support Python 2, Python 3 or both.
+'Programming Language :: Python :: 3',
+'Programming Language :: Python :: 3.11',
+'Programming Language :: Python :: 3.12',
+'Programming Language :: Python :: 3.13',
+'Programming Language :: Python :: 3.14',
+]
+
+[project.optional-dependencies] # Optional
+dev = [
+    "build",
+    "mypy",
+    "pre-commit",
+    "python-magic",
+    "ruff",
+    "sbom4python",
+]
+docs = [
+    "nbsphinx",
+	"pydata-sphinx-theme",
+    "sphinx>=8.2.0",
+    "sphinx_design",
+]
+examples = [
+    "cartopy",
+    "jupyterlab",
+    "nbconvert==7.13.1",
+    "notebook",
+    "pandoc",
+]
+test = [
+    "pytest>=2.7.3",
+    "pytest-cov",
+    "pytest-mock",
+    "responses",
+]
+
+[project.scripts]
+workflowpy = "workflowpy.cli.main:cli"
+
+[project.urls]
+"Source" =  "https://github.com/deltares-research/workflowpy"
+"Bug Reports" = "https://github.com/deltares-research/workflowpy/issues"
+
+## Some stuff for pytest and coverage
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "serial",
+    "system: marks tests as system tests (deselect with '-m \"not system\"')",
+]
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["./src"]
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+    ]
+ignore_errors = true
+
+[tool.coverage.html]
+directory = ".cov"
+
+## Linting and formatting
+[tool.ruff]
+line-length = 88
+
+# enable pydocstyle (E), pyflake (F) and isort (I), pytest-style (PT)
+[tool.ruff.lint]
+select = ["E", "F", "I", "PT", "D"]
+ignore = ["B904", "D105", "D211", "D213", "D301", "E712", "E741"]
+exclude = ["docs/**"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D103", "D100", "D104"]
+"src/workflowpy/__init__.py" = ["F401", "F403"]
+"src/workflowpy/**/__init__.py" = ["F403"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+## In depth code checking
+[tool.mypy]
+# TODO: Re-enable the tests
+exclude = ["tests/.*", "tmp/.*"]
+plugins = ["pydantic.mypy", "numpy.typing.mypy_plugin"]
+python_version = "3.13"
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+extra_checks = true
+disallow_subclassing_any = false
+disallow_untyped_decorators = false
+disallow_any_generics = true
+
+## Workspace related stuff
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "win-64"]
+
+## The different tasks of this workspace
+# First general tasks
+[tool.pixi.tasks]
+# Clean up (some of) the temporary files
+clean = { depends-on = [
+    "clean-bin",
+    "clean-build",
+    "clean-dist",
+    "clean-docs",
+] }
+clean-bin = { cmd = ["rm", "-rf", "bin"] }
+clean-build = { cmd = ["rm", "-rf", "build"] }
+clean-dist = {cmd = ["rm", "-rf", "dist"] }
+clean-docs = { depends-on = [
+    "clean-docs-build",
+    "clean-docs-example",
+    "clean-docs-gen",
+] }
+clean-docs-build = { cmd = ["rm", "-rf", "docs/_build"] }
+clean-docs-example = { cmd = ["rm", "-rf", "docs/_examples"] }
+clean-docs-gen = { cmd = ["rm", "-rf", "docs/_generated"] }
+
+# Docker related stuff (expand in future)
+docker-clean = { cmd = ["docker", "system", "prune", "-f"] }
+
+# Dev specific taskss
+[tool.pixi.feature.dev.tasks]
+# Installation
+install-pre-commit = "pre-commit install"
+install = { depends-on = ["install-pre-commit"] }
+
+# Linting and code checking
+lint = { cmd = ["pre-commit", "run", "--all"] }
+mypy = { cmd = ["mypy", ".", "--install-types", "--non-interactive"] }
+
+# SBOM
+sbom = { cmd = [
+    "sbom4python",
+    "--module",
+    "workflowpy",
+    "--output-file",
+    "workflowpy-sbom.json",
+    "--sbom",
+    "spdx",
+    "--format",
+    "json",
+] }
+
+# Building of documentation
+[tool.pixi.feature.docs.tasks]
+docs-dummy = {cmd = ["sphinx-build", "./docs", "./docs/_build", "-b", "dummy", "-W"] }
+docs-html = { cmd = ["sphinx-build", "-M", "html", "docs", "docs/_build", "-W"] }
+docs-html-rebuild = { depends-on = ["clean-docs", "docs-html"] }
+serve = { cmd = ["python", "-m", "http.server", "8000", "-d", "./docs/_build/html"] }
+
+# Testing tasks
+[tool.pixi.feature.test.tasks]
+test = { cmd = ["pytest", "--verbose"] }
+test-lf = { cmd = ["pytest", "--lf", "--tb=short"] }
+test-cov = { cmd = [
+    "pytest",
+    "-m",
+    "not (integration or system)",
+    "--verbose",
+    "--cov=workflowpy",
+    "--cov-report",
+    "xml"
+] }
+test-cov-html = { cmd = [
+    "pytest",
+    "-m",
+    "not (integration or system)",
+    "--verbose",
+    "--cov",
+    "--cov-report",
+    "html"
+] }
+test-integration = { cmd = [
+    "pytest",
+    "-m",
+    "integration",
+    "--verbose",
+] }
+test-system = { cmd = [
+    "pytest",
+    "-m",
+    "system",
+    "--verbose",
+] }
+
+## Dependencies
+[tool.pixi.dependencies]
+pip = "*"
+uv = "*"
+
+[tool.pixi.pypi-dependencies]
+workflowpy = { path = ".", editable = true }
+
+[tool.pixi.feature.examples.dependencies]
+pandoc = "*"
+
+[tool.pixi.feature.wheel.dependencies]
+pip = "*"
+uv = "*"
+
+# Extra python environments
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
+
+[tool.pixi.feature.py313.dependencies]
+python = "3.13.*"
+
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+
+## Define the environments
+[tool.pixi.environments]
+default = { features = ["py314", "dev", "docs", "examples", "test"] }
+docs = { features = ["py313", "docs", "examples"] }
+slim = { features = [] }
+test-py314 = { features = ["py314", "test"] }
+test-py313 = { features = ["py313", "test"] }
+test-py312 = { features = ["py312", "test"] }
+test-py311 = { features = ["py311", "test"] }
+wheel = { features = ["py313", "test", "wheel"], no-default-feature=true }

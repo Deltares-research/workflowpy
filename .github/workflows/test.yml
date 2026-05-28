@@ -1,0 +1,78 @@
+---
+name: Test
+on:
+  workflow_call:
+    inputs:
+      os:               { type: string, required: true }
+      python-version:   { type: string, required: true }
+
+jobs:
+  unit:
+    defaults:
+      run:
+        shell: bash -e -l {0}
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pixi env
+        uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0
+        with:
+          pixi-version: "v0.69.0"
+          environments: test-py${{ inputs.python-version }}
+          locked: false
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
+      - name: Test
+        run: |
+          pixi run -e test-py${{ inputs.python-version }} test-cov
+
+      - name: Upload coverage
+        if: inputs.os == 'ubuntu-latest' && inputs.python-version == '314'
+        uses: actions/upload-artifact@v6
+        with:
+          name: code-coverage
+          path: coverage.xml
+
+      - name: Signal SonarQube
+        if: inputs.os == 'ubuntu-latest' && inputs.python-version == '314'
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: sonarqube-trigger
+          client-payload: |
+            {
+              "run_id": "${{ github.run_id }}",
+              "branch": "${{ github.head_ref || github.ref_name }}",
+              "pr_flag": "${{ github.event_name == 'pull_request' }}",
+              "pr_base": "${{ github.event.pull_request.base.ref || '' }}",
+              "pr_number": "${{ github.event.pull_request.number || '' }}"
+            }
+
+  integration:
+    defaults:
+      run:
+        shell: bash -e -l {0}
+    runs-on: ${{ inputs.os }}
+    needs: unit
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pixi env
+        uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0
+        with:
+          pixi-version: "v0.69.0"
+          environments: test-py${{ inputs.python-version }}
+          locked: false
+          cache: true
+          cache-write: false
+
+      - name: Test
+        run: |
+          pixi run -e test-py${{ inputs.python-version }} test-integration
