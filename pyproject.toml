@@ -284,6 +284,13 @@ pandoc = "*"
 pip = "*"
 uv = "*"
 
+## Platform specific
+[tool.pixi.target.linux-64.dependencies]
+nodejs = "*"
+
+[tool.pixi.target.linux-64.pypi-dependencies]
+cwltool = "*"
+
 # Extra python environments
 [tool.pixi.feature.py314.dependencies]
 python = "3.14.*"

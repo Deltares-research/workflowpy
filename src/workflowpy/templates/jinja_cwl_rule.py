@@ -236,8 +236,8 @@ class JinjaCWLRule:
         for p in self.rule.method.params:
             key, value = p
             # Check if key can be found in method Params class
-            if key in self.rule.method.params.__class_.model_fields:
-                default_value = self.rule.method.params.__class_.model_fields.get(
+            if key in self.rule.method.params.__class__.model_fields:
+                default_value = self.rule.method.params.__class__.model_fields.get(
                     key
                 ).default
             else:
